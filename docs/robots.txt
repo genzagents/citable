@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://genzagents.github.io/citable/sitemap.xml

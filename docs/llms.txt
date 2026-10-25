@@ -1,0 +1,16 @@
+# citable
+
+> Can ChatGPT, Claude and Perplexity read and cite your site? A zero-dependency command and MCP server that checks robots.txt, CDN/WAF edge blocks (by fetching as each AI bot), llms.txt, JSON-LD, JS-only content, sitemap and canonical, then scores the site 0-100 with fixes.
+
+Site: https://genzagents.github.io/citable/
+
+## Key pages
+
+- [Source and README](https://github.com/genzagents/citable): install, what it checks, MCP server, CI use
+- [Claude Code plugin marketplace](https://github.com/genzagents/marketplace): `claude plugin marketplace add genzagents/marketplace`
+- [Weekly watch waitlist](https://github.com/genzagents/citable/issues/new?title=I+want+the+weekly+watch): £9/month alert when an answer bot gets blocked
+
+## Usage
+
+- `curl -sL https://raw.githubusercontent.com/genzagents/citable/main/citable/__init__.py | python3 - yoursite.com`
+- `citable yoursite.com --json`, `--llms-txt`, `--min-score=70`, `citable mcp`
