@@ -1,0 +1,12 @@
+{
+  "name": "citable",
+  "version": "0.1.0",
+  "description": "Check whether ChatGPT, Claude and Perplexity can read and cite a website: robots.txt, WAF/edge blocks (fetches as each bot), llms.txt, JSON-LD, JS-only content, sitemap. Score 0-100 with fixes, plus an llms.txt drafter. Zero dependencies.",
+  "author": { "name": "genzagents", "url": "https://github.com/genzagents" },
+  "homepage": "https://genzagents.github.io/citable/",
+  "repository": "https://github.com/genzagents/citable",
+  "license": "MIT",
+  "keywords": ["llms.txt", "AI search", "AEO", "GEO", "robots.txt", "GPTBot", "ClaudeBot", "PerplexityBot"],
+  "mcpServers": "./.mcp.json",
+  "skills": "./skills/"
+}

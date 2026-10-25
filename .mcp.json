@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "citable": {
+      "command": "python3",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/citable/__init__.py", "mcp"]
+    }
+  }
+}

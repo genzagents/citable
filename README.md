@@ -1,0 +1,104 @@
+# citable
+
+Can ChatGPT, Claude and Perplexity actually read and cite your site?
+
+Most "AI visibility" checkers read `robots.txt` and stop. `citable` fetches your homepage **as each AI bot**
+and reports the blocks that `robots.txt` never mentions (Cloudflare "Block AI bots", WAF rules, rate limiters),
+then checks the rest of the list: `llms.txt`, JSON-LD, title and description, JS-only content, sitemap, canonical.
+Score out of 100, every failure with the fix. Also runs as an **MCP server** so your agent can check sites for you.
+
+Zero dependencies. One file. Python 3.9+.
+
+```bash
+pipx install git+https://github.com/genzagents/citable     # or: uvx --from git+https://github.com/genzagents/citable citable
+citable example.com                # report
+citable example.com --json         # for scripts and CI (exit 1 if below --min-score=N)
+citable example.com --llms-txt     # a starter llms.txt built from your homepage
+```
+
+No install at all:
+
+```bash
+curl -sL https://raw.githubusercontent.com/genzagents/citable/main/citable/__init__.py | python3 - example.com
+```
+
+## What a run looks like
+
+```
+citable 0.1.0: https://reddit.com/
+  score 13/100  grade F   (final URL https://www.reddit.com/)
+
+  [FAIL]  0/15 robots.txt allows answer engines: robots.txt blocks: OAI-SearchBot, ChatGPT-User, Claude-SearchBot, ...
+  [FAIL]  0/20 Answer engines not blocked at the edge: Fetching the homepage as a bot: ChatGPT-User got HTTP 403; a browser got 200.
+         fix: Your CDN or WAF (Cloudflare 'Block AI bots', bot-fight mode, a rate limiter) is refusing them ...
+  [FAIL]  0/15 /llms.txt: /llms.txt returns HTTP 404.
+  ...
+  Bot                 Vendor                 Role    robots.txt   live fetch
+  OAI-SearchBot       OpenAI                 answer  block        HTTP 200
+  ChatGPT-User        OpenAI                 answer  block        HTTP 403  <- BLOCKED
+  Claude-SearchBot    Anthropic              answer  block        HTTP 200
+  ...
+```
+
+## What it checks
+
+| Check | Points | Why it matters |
+|---|---|---|
+| robots.txt allows the **answer** bots (OAI-SearchBot, ChatGPT-User, Claude-SearchBot, Claude-User, PerplexityBot, Perplexity-User, DuckAssistBot, Bingbot, Googlebot) | 15 | These fetch pages to answer live questions and cite the source. Blocked means never cited. |
+| Not blocked at the edge: homepage fetched **as** each of those bots returns what a browser gets | 20 | CDN and WAF "block AI" toggles stop bots that robots.txt allows. Nothing else on this list matters until this passes. |
+| Training crawlers (GPTBot, ClaudeBot, Google-Extended, CCBot, Applebot-Extended, meta-externalagent, Amazonbot, Bytespider) | info | Blocking them is a legitimate choice and does not affect citations. Reported, never penalised. |
+| `/llms.txt` present, plain text, with an H1, a `> summary` and links | 15 | The convention answer engines and agents read first. A soft-404 HTML page counts as missing. |
+| Content readable without JavaScript (words in the raw HTML) | 15 | Most AI crawlers do not run JS. A client-rendered shell is invisible to them. |
+| JSON-LD structured data (Organization, WebSite, Article, FAQPage...) | 10 | Entities and FAQs get quoted directly. |
+| Title and meta description, sensible lengths | 8 | Quoted verbatim in answers. |
+| HTTPS, response time, canonical, Open Graph, sitemap, `<html lang>`, no `noindex` | 22 | Hygiene that decides which URL gets the citation. |
+
+## As an MCP server (Claude Code, Claude Desktop, Cursor, any MCP client)
+
+Tools: `check_site(url, live=true)` and `draft_llms_txt(url)`.
+
+Claude Code plugin (includes the MCP server and a skill that knows how to act on the report):
+
+```bash
+claude plugin marketplace add genzagents/marketplace
+claude plugin install citable@genzagents
+```
+
+Any MCP client, by hand:
+
+```json
+{ "mcpServers": { "citable": { "command": "python3", "args": ["/path/to/citable/citable/__init__.py", "mcp"] } } }
+```
+
+The server speaks MCP over stdio with no dependencies, so it runs anywhere Python does.
+
+## In CI
+
+Fail the build when a deploy breaks AI access (a new WAF rule, a lost `llms.txt`, a `Disallow: /` that slipped in):
+
+```bash
+citable yoursite.com --min-score=70 --json > citable.json
+```
+
+## Watch
+
+Free: run it whenever you like. **£9/month: we run it weekly on up to 5 domains and email you the moment an answer
+bot gets blocked, `llms.txt` disappears, or your score drops.** Not live yet; press the button to tell us you want it,
+that is what decides whether it gets built:
+
+[**I want the weekly watch →**](https://github.com/genzagents/citable/issues/new?title=I+want+the+weekly+watch&body=Domain(s):%0A%0AWhat+would+you+pay+per+month%3F)
+
+## Notes
+
+- Bot user agents and roles follow the vendors' published strings (OpenAI, Anthropic, Perplexity). Role "answer" = fetches
+  to answer or cite in a live conversation; "train" = builds training corpora.
+- The edge check compares HTTP status only. A site that returns 200 with a challenge page to bots will pass; file an issue with the domain and it gets a heuristic.
+- `--no-live` skips the bot fetches (faster, robots.txt only).
+
+## Development
+
+```bash
+python3 -m unittest discover -s tests -v
+```
+
+MIT. Built by [genzagents](https://github.com/genzagents).

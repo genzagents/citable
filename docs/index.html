@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>citable</title>
+<meta name="description" content="Can ChatGPT, Claude and Perplexity read and cite your site? One command checks robots.txt, edge blocks, llms.txt, schema and JS-only content. Zero dependencies, also an MCP server.">
+<link rel="canonical" href="https://genzagents.github.io/citable/">
+<meta property="og:title" content="citable">
+<meta property="og:description" content="Can ChatGPT, Claude and Perplexity read and cite your site? One command tells you, with the fixes.">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"citable","applicationCategory":"DeveloperApplication","operatingSystem":"Any","url":"https://genzagents.github.io/citable/","description":"Checks whether AI answer engines can read and cite a website.","offers":{"@type":"Offer","price":"0","priceCurrency":"GBP"},"author":{"@type":"Organization","name":"genzagents","url":"https://github.com/genzagents"}}</script>
+<style>
+  :root {
+    --bg: #ffffff; --fg: #111318; --muted: #5b6270; --line: #e4e7ec; --card: #f6f7f9;
+    --accent: #1d4ed8; --ok: #15803d; --fail: #b91c1c; --warn: #a16207;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0e1013; --fg: #e8eaee; --muted: #9aa3b2; --line: #262a31; --card: #161a20;
+      --accent: #60a5fa; --ok: #4ade80; --fail: #f87171; --warn: #facc15;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0e1013; --fg: #e8eaee; --muted: #9aa3b2; --line: #262a31; --card: #161a20;
+    --accent: #60a5fa; --ok: #4ade80; --fail: #f87171; --warn: #facc15;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.55 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 48px 16px 96px; }
+  h1 { font-size: 2.1rem; letter-spacing: -0.02em; margin: 0 0 8px; }
+  h2 { font-size: 1.25rem; margin: 48px 0 12px; }
+  p.lead { font-size: 1.15rem; color: var(--muted); margin: 0 0 28px; }
+  pre, code { font-family: var(--mono); font-size: 0.88rem; }
+  pre { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; overflow-x: auto; margin: 10px 0; }
+  code.inline { background: var(--card); padding: 1px 5px; border-radius: 4px; }
+  .pass { color: var(--ok); } .fail { color: var(--fail); } .warn { color: var(--warn); }
+  table { border-collapse: collapse; width: 100%; font-size: 0.92rem; }
+  td, th { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; }
+  a { color: var(--accent); }
+  .cta { border: 1px solid var(--line); border-radius: 10px; padding: 18px; background: var(--card); margin-top: 16px; }
+  .btn { display: inline-block; font-weight: 600; padding: 10px 18px; border-radius: 8px; background: var(--accent); color: #fff; text-decoration: none; }
+  .muted { color: var(--muted); }
+  footer { margin-top: 64px; color: var(--muted); font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>citable</h1>
+  <p class="lead">Can ChatGPT, Claude and Perplexity actually read and cite your site? One command tells you, with the fixes.</p>
+
+  <pre>curl -sL https://raw.githubusercontent.com/genzagents/citable/main/citable/__init__.py | python3 - yoursite.com</pre>
+  <p class="muted">Zero dependencies, one Python file, nothing to sign up for. Or <code class="inline">pipx install git+https://github.com/genzagents/citable</code>. <a href="https://github.com/genzagents/citable">Source and README</a>.</p>
+
+  <h2>Why this one</h2>
+  <p>Most "AI visibility" checkers read <code class="inline">robots.txt</code> and stop. But the block that actually keeps you out of answers is usually at the edge: a Cloudflare "Block AI bots" toggle, a WAF rule, a rate limiter. <code class="inline">citable</code> fetches your homepage <strong>as each AI bot</strong> and compares it with what a browser gets. Then it checks the rest: <code class="inline">llms.txt</code>, JSON-LD, title and description, whether your text exists without JavaScript, sitemap, canonical. It also tells answer bots (the ones that cite you) apart from training crawlers (which you may block freely).</p>
+
+  <h2>A real run</h2>
+  <pre>citable 0.1.0: https://reddit.com/
+  score 13/100  grade F
+
+  <span class="fail">[FAIL]</span>  0/15 robots.txt allows answer engines: robots.txt blocks: OAI-SearchBot, ChatGPT-User, Claude-SearchBot, ...
+  <span class="fail">[FAIL]</span>  0/20 Answer engines not blocked at the edge: ChatGPT-User got HTTP 403; a browser got 200.
+         fix: Your CDN or WAF (Cloudflare 'Block AI bots', bot-fight mode, a rate limiter) is refusing them ...
+  <span class="fail">[FAIL]</span>  0/15 /llms.txt: /llms.txt returns HTTP 404.
+         fix: Publish a plain-text /llms.txt ... `citable reddit.com --llms-txt` prints a draft from your homepage.
+
+citable 0.1.0: https://anthropic.com/
+  score 77/100  grade B
+
+  <span class="pass">[PASS]</span> 15/15 robots.txt allows answer engines
+  <span class="pass">[PASS]</span> 20/20 Answer engines not blocked at the edge
+  <span class="fail">[FAIL]</span>  0/15 /llms.txt: /llms.txt returns HTTP 404.
+  <span class="fail">[FAIL]</span>  0/10 Structured data (JSON-LD): No JSON-LD found.
+  <span class="pass">[PASS]</span> 15/15 Content readable without JavaScript: 349 words of visible text in the raw HTML</pre>
+
+  <h2>What it checks</h2>
+  <table>
+    <tr><th>Check</th><th>Points</th><th>Why</th></tr>
+    <tr><td>robots.txt allows the answer bots (OAI-SearchBot, ChatGPT-User, Claude-SearchBot, Claude-User, PerplexityBot, Perplexity-User, DuckAssistBot, Bingbot, Googlebot)</td><td>15</td><td>Blocked means never cited.</td></tr>
+    <tr><td>Not blocked at the edge (fetched as each bot)</td><td>20</td><td>CDN and WAF toggles block bots that robots.txt allows.</td></tr>
+    <tr><td>Training crawlers (GPTBot, ClaudeBot, Google-Extended, CCBot...)</td><td>info</td><td>Your choice. Reported, never penalised.</td></tr>
+    <tr><td>/llms.txt present, plain text, H1 + summary + links</td><td>15</td><td>What engines and agents read first.</td></tr>
+    <tr><td>Content readable without JavaScript</td><td>15</td><td>Most AI crawlers do not run JS.</td></tr>
+    <tr><td>JSON-LD structured data</td><td>10</td><td>Entities and FAQs get quoted directly.</td></tr>
+    <tr><td>Title, description, HTTPS, speed, canonical, Open Graph, sitemap, lang, no noindex</td><td>30</td><td>Decides which URL gets the citation.</td></tr>
+  </table>
+
+  <h2>For your agent: MCP server and Claude Code plugin</h2>
+  <p>Tools <code class="inline">check_site</code> and <code class="inline">draft_llms_txt</code>, over stdio, no dependencies. The plugin adds a skill that turns the report into edits.</p>
+  <pre>claude plugin marketplace add genzagents/marketplace
+claude plugin install citable@genzagents</pre>
+
+  <h2 id="watch">Weekly watch</h2>
+  <div class="cta">
+    <p><strong>£9/month: we run it weekly on up to 5 domains and email you the moment an answer bot gets blocked, <code class="inline">llms.txt</code> disappears, or your score drops.</strong> A deploy that flips a WAF setting silently removes you from every AI answer; this is the alarm.</p>
+    <p>Not live yet. Press the button to say you want it; the number of presses decides whether it gets built.</p>
+    <a class="btn" href="https://github.com/genzagents/citable/issues/new?title=I+want+the+weekly+watch&amp;body=Domain(s):%0A%0AWhat+would+you+pay+per+month%3F">I want the weekly watch</a>
+  </div>
+
+  <footer>MIT licence. Built by <a href="https://github.com/genzagents">genzagents</a>. The CLI runs on your machine and talks only to the site you name.</footer>
+</main>
+</body>
+</html>

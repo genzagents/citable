@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "citable"
+version = "0.1.0"
+description = "Can ChatGPT, Claude and Perplexity read and cite your site? Checks robots.txt, edge blocks, llms.txt, schema and JS-only content. Zero dependencies. Also an MCP server."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "genzagents" }]
+keywords = ["llms.txt", "robots.txt", "GPTBot", "ClaudeBot", "PerplexityBot", "AEO", "GEO", "AI search", "MCP"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Topic :: Internet :: WWW/HTTP :: Site Management",
+]
+
+[project.urls]
+Homepage = "https://genzagents.github.io/citable/"
+Source = "https://github.com/genzagents/citable"
+
+[project.scripts]
+citable = "citable:main"
+
+[tool.setuptools]
+packages = ["citable"]
