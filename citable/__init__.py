@@ -339,9 +339,14 @@ def check_site(target: str, live: bool = True) -> Dict[str, Any]:
     # 2. robots.txt and 3. live bot fetches, in parallel
     robots_resp = None
     live_results: Dict[str, Dict[str, Any]] = {}
+    # Sites hosted on a sub-path (GitHub project pages, docs portals) can only publish llms.txt and a sitemap
+    # under that path, so those two are also tried there. robots.txt is root-only by spec.
+    sub = urllib.parse.urlsplit(final).path.rstrip("/")
+    sub_base = base + sub if sub else None
     with concurrent.futures.ThreadPoolExecutor(max_workers=8) as ex:
         f_robots = ex.submit(fetch, base + "/robots.txt", BROWSER_UA, "text/plain,*/*")
         f_llms = ex.submit(fetch, base + "/llms.txt", BROWSER_UA, "text/plain,*/*")
+        f_llms_sub = ex.submit(fetch, sub_base + "/llms.txt", BROWSER_UA, "text/plain,*/*") if sub_base else None
         f_llms_full = ex.submit(fetch, base + "/llms-full.txt", BROWSER_UA, "text/plain,*/*", 200_000)
         f_live = {}
         if live:
@@ -351,6 +356,11 @@ def check_site(target: str, live: bool = True) -> Dict[str, Any]:
         robots_resp = f_robots.result()
         llms_resp = f_llms.result()
         llms_full_resp = f_llms_full.result()
+        llms_location = base + "/llms.txt"
+        if f_llms_sub is not None and not validate_llms_txt(llms_resp)["present"]:
+            alt = f_llms_sub.result()
+            if validate_llms_txt(alt)["present"]:
+                llms_resp, llms_location = alt, sub_base + "/llms.txt"
         for name, fut in f_live.items():
             live_results[name] = fut.result()
 
@@ -416,8 +426,9 @@ def check_site(target: str, live: bool = True) -> Dict[str, Any]:
         quality = sum([llms["has_h1"], llms["has_summary"], llms["link_count"] > 0])
         pts = {3: 15, 2: 12, 1: 8, 0: 5}[quality]
         missing = [x for x, ok in (("an H1 title", llms["has_h1"]), ("a '> summary' line", llms["has_summary"]), ("markdown links to key pages", llms["link_count"] > 0)) if not ok]
+        llms["url"] = llms_location
         checks.append(_check("llms_txt", "/llms.txt", "pass" if quality == 3 else "warn", pts, 15,
-                             f"Present ({llms['bytes']} bytes, {llms['link_count']} links" + (", llms-full.txt too" if llms["full_present"] else "") + ").",
+                             f"Present at {llms_location} ({llms['bytes']} bytes, {llms['link_count']} links" + (", llms-full.txt too" if llms["full_present"] else "") + ").",
                              ("Add " + " and ".join(missing) + ". Run `citable " + target + " --llms-txt` for a draft.") if missing else ""))
     else:
         why = "returns HTML (a soft 404)" if llms["soft_404"] else f"returns HTTP {llms['status']}"
@@ -489,6 +500,10 @@ def check_site(target: str, live: bool = True) -> Dict[str, Any]:
     sitemap_url = robots["sitemaps"][0] if robots.get("sitemaps") else base + "/sitemap.xml"
     sm = fetch(sitemap_url, BROWSER_UA, "application/xml,text/xml,*/*", 200_000)
     sm_ok = sm["status"] == 200 and ("<urlset" in sm["body"] or "<sitemapindex" in sm["body"])
+    if not sm_ok and sub_base and not robots.get("sitemaps"):
+        alt_sm = fetch(sub_base + "/sitemap.xml", BROWSER_UA, "application/xml,text/xml,*/*", 200_000)
+        if alt_sm["status"] == 200 and ("<urlset" in alt_sm["body"] or "<sitemapindex" in alt_sm["body"]):
+            sitemap_url, sm, sm_ok = sub_base + "/sitemap.xml", alt_sm, True
     if sm_ok:
         checks.append(_check("sitemap", "Sitemap", "pass", 5, 5, f"{sitemap_url} is a valid sitemap" + (" (listed in robots.txt)." if robots.get("sitemaps") else " (default path; not listed in robots.txt).")))
     else:
