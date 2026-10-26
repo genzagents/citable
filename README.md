@@ -14,6 +14,7 @@ pipx install git+https://github.com/genzagents/citable     # or: uvx --from git+
 citable example.com                # report
 citable example.com --json         # for scripts and CI (exit 1 if below --min-score=N)
 citable example.com --llms-txt     # a starter llms.txt built from your homepage
+citable watch a.com b.com          # weekly watch: GitHub issue per site, comment (email) on regressions
 ```
 
 No install at all:
@@ -82,11 +83,42 @@ citable yoursite.com --min-score=70 --json > citable.json
 
 ## Watch
 
-Free: run it whenever you like. **£9/month: we run it weekly on up to 5 domains and email you the moment an answer
-bot gets blocked, `llms.txt` disappears, or your score drops.** Not live yet; press the button to tell us you want it,
-that is what decides whether it gets built:
+A deploy that flips a WAF toggle silently removes you from every AI answer. The watch is the alarm. It runs as a
+GitHub Action in any repo you own (it need not be the site's repo), keeps one issue per site up to date, and
+**comments on that issue the moment an answer bot is blocked, `llms.txt` disappears, the site goes down or the
+score drops**, which GitHub emails to you. No server, no account, no dependencies. Example: [issue #1](https://github.com/genzagents/citable/issues/1) watches this project's own page.
 
-[**I want the weekly watch →**](https://github.com/genzagents/citable/issues/new?title=I+want+the+weekly+watch&body=Domain(s):%0A%0AWhat+would+you+pay+per+month%3F)
+Copy [`docs/watch.yml`](docs/watch.yml) to `.github/workflows/citable-watch.yml`:
+
+```yaml
+on:
+  schedule: [{ cron: "17 6 * * 1" }]   # Mondays
+  workflow_dispatch:
+permissions: { issues: write, contents: read }
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: genzagents/citable@v0.2.0
+        with:
+          sites: |
+            example.com
+            docs.example.com
+          # min-score: 75
+```
+
+Inputs: `sites` (required), `min-score` (fail below it), `live` (fetch as each bot, default true), `issue`
+(track in an issue, default true), `notify` (login to @mention on a regression, default repo owner),
+`fail-on-regression` (default true). Outputs: `score`, `regressed`, `changed`. Same thing from a shell where `gh` is logged in:
+
+```bash
+citable watch example.com docs.example.com --repo=you/your-repo --notify=you
+```
+
+**Hosted, £9/month**: the same watch run by us, no repo needed, up to 5 domains, with the weekly email.
+Not live yet; press the button to tell us you want it, that is what decides whether it gets built:
+
+[**I want the hosted weekly watch →**](https://github.com/genzagents/citable/issues/new?title=I+want+the+weekly+watch&body=Domain(s):%0A%0AWhat+would+you+pay+per+month%3F)
 
 ## Notes
 

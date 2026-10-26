@@ -1,0 +1,69 @@
+name: citable watch
+description: >-
+  Weekly check that ChatGPT, Claude and Perplexity can still read and cite your site. Keeps one GitHub
+  issue per site up to date and comments on it (GitHub emails you) the moment an AI answer bot is blocked,
+  llms.txt breaks, the site goes down or the score drops. Zero dependencies.
+author: genzagents
+branding:
+  icon: eye
+  color: purple
+
+inputs:
+  sites:
+    description: One or more site URLs or domains, separated by spaces, commas or newlines.
+    required: true
+  min-score:
+    description: Fail the job if any site scores below this (0 to 100).
+    default: "0"
+  live:
+    description: Also fetch the homepage as each AI bot to catch CDN/WAF edge blocks.
+    default: "true"
+  issue:
+    description: Track each site in a GitHub issue titled "citable watch <host>" (needs `issues: write`).
+    default: "true"
+  notify:
+    description: GitHub login to @mention in the comment when something regresses.
+    default: ${{ github.repository_owner }}
+  label:
+    description: Label put on the watch issues.
+    default: citable
+  fail-on-regression:
+    description: Fail the job when something got worse since the last run.
+    default: "true"
+  token:
+    description: Token used by `gh` to read and write issues.
+    default: ${{ github.token }}
+
+outputs:
+  score:
+    description: Lowest score across the sites checked (0 to 100).
+    value: ${{ steps.watch.outputs.score }}
+  regressed:
+    description: "true if anything got worse since the previous run."
+    value: ${{ steps.watch.outputs.regressed }}
+  changed:
+    description: "true if anything changed (better or worse) since the previous run."
+    value: ${{ steps.watch.outputs.changed }}
+
+runs:
+  using: composite
+  steps:
+    - id: watch
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        CITABLE_SITES: ${{ inputs.sites }}
+        CITABLE_MIN_SCORE: ${{ inputs.min-score }}
+        CITABLE_LIVE: ${{ inputs.live }}
+        CITABLE_ISSUE: ${{ inputs.issue }}
+        CITABLE_NOTIFY: ${{ inputs.notify }}
+        CITABLE_LABEL: ${{ inputs.label }}
+        CITABLE_FAIL: ${{ inputs.fail-on-regression }}
+      run: |
+        args=()
+        [ "$CITABLE_LIVE" = "true" ] || args+=(--no-live)
+        [ "$CITABLE_ISSUE" = "true" ] || args+=(--no-issue)
+        [ "$CITABLE_FAIL" = "true" ] || args+=(--no-fail-on-regression)
+        [ -z "$CITABLE_NOTIFY" ] || args+=("--notify=$CITABLE_NOTIFY")
+        python3 "$GITHUB_ACTION_PATH/citable/watch.py" "$CITABLE_SITES" \
+          "--min-score=$CITABLE_MIN_SCORE" "--label=$CITABLE_LABEL" "${args[@]}"

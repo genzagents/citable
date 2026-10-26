@@ -7,6 +7,7 @@ One file, zero dependencies, Python 3.9+.
     citable example.com --json        machine-readable
     citable example.com --llms-txt    print a starter llms.txt built from the homepage
     citable mcp                       run as an MCP server over stdio (tools: check_site, draft_llms_txt)
+    citable watch a.com b.com         weekly watch: remembers results in a GitHub issue, comments on regressions
 
 It does not guess from robots.txt alone: it fetches the homepage *as* each AI bot and reports
 edge blocks (Cloudflare, WAFs) that robots.txt never mentions.
@@ -25,7 +26,7 @@ import urllib.parse
 import urllib.request
 from typing import Any, Dict, List, Optional, Tuple
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 __all__ = ["check_site", "draft_llms_txt", "parse_robots", "robots_verdict", "main"]
 
 TIMEOUT = 12
@@ -666,6 +667,17 @@ def main(argv: Optional[List[str]] = None) -> int:
     if argv[0] == "mcp":
         mcp_serve()
         return 0
+    if argv[0] == "watch":
+        try:
+            from citable import watch as _watch
+        except ImportError:  # run as a bare script: load the sibling file
+            import importlib.util
+            import os
+            spec = importlib.util.spec_from_file_location("citable_watch", os.path.join(os.path.dirname(os.path.abspath(__file__)), "watch.py"))
+            assert spec and spec.loader
+            _watch = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(_watch)
+        return _watch.main(argv[1:])
     target = argv[0]
     flags = set(argv[1:])
     if "--llms-txt" in flags:

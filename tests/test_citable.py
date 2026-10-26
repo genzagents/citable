@@ -133,3 +133,56 @@ class McpSchemaTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class WatchTests(unittest.TestCase):
+    def _report(self, score=95, llms=True, edge_block=(), robots_block=(), failing=(), reachable=True):
+        bots = {}
+        for b in ("OAI-SearchBot", "ChatGPT-User", "PerplexityBot"):
+            bots[b] = {"vendor": "x", "role": "answer", "robots": "block" if b in robots_block else "allow",
+                       "live_status": 403 if b in edge_block else 200, "live_blocked": b in edge_block}
+        bots["GPTBot"] = {"vendor": "x", "role": "train", "robots": "block", "live_status": 200, "live_blocked": False}
+        checks = [{"id": i, "title": t, "status": "fail" if i in failing else "pass", "points": 0, "max": 5,
+                   "detail": "d", "fix": "f"} for i, t in (("https", "HTTPS"), ("jsonld", "JSON-LD"), ("sitemap", "Sitemap"))]
+        return {"url": "https://example.com/", "final_url": "https://example.com/", "reachable": reachable,
+                "score": score, "grade": "A", "checks": checks, "bots": bots,
+                "llms_txt": {"present": llms}, "checked_at": "2026-10-26T00:00:00Z"}
+
+    def test_snapshot_only_keeps_answer_bots(self):
+        from citable.watch import snapshot
+        s = snapshot(self._report(edge_block=("ChatGPT-User",), robots_block=("PerplexityBot",), failing=("jsonld",)))
+        self.assertEqual(s["bots"], {"OAI-SearchBot": "ok", "ChatGPT-User": "edge", "PerplexityBot": "robots"})
+        self.assertEqual(s["failing"], ["jsonld"])
+        self.assertTrue(s["llms_txt"])
+
+    def test_diff_reports_regressions_and_improvements(self):
+        from citable.watch import diff, snapshot
+        prev = snapshot(self._report(score=95, failing=("sitemap",)))
+        cur = snapshot(self._report(score=70, llms=False, edge_block=("ChatGPT-User",), failing=("jsonld",)))
+        worse, better = diff(prev, cur)
+        self.assertTrue(any("ChatGPT-User is now blocked at the edge" in w for w in worse))
+        self.assertTrue(any("/llms.txt is gone" in w for w in worse))
+        self.assertTrue(any("Now failing: JSON-LD" in w for w in worse))
+        self.assertTrue(any("Score fell from 95 to 70" in w for w in worse))
+        self.assertEqual(better, ["Fixed: Sitemap."])
+        self.assertEqual(diff(None, cur), ([], []))
+        self.assertEqual(diff(cur, cur), ([], []))
+
+    def test_unreachable_is_one_regression(self):
+        from citable.watch import diff, snapshot
+        prev = snapshot(self._report())
+        cur = snapshot({"url": "https://example.com/", "reachable": False, "score": 0, "grade": "F", "checks": [], "bots": {}, "llms_txt": {}})
+        worse, better = diff(prev, cur)
+        self.assertEqual(len(worse), 1)
+        self.assertIn("unreachable", worse[0])
+
+    def test_state_round_trips_through_issue_body(self):
+        from citable.watch import host_of, issue_title, parse_state, render_body, snapshot
+        r = self._report()
+        snap = snapshot(r)
+        body = render_body(r, snap, "https://github.com/o/r/actions/runs/1")
+        self.assertEqual(parse_state(body), json.loads(json.dumps(snap)))
+        self.assertIn("| ChatGPT-User | allow | HTTP 200 |", body)
+        self.assertEqual(issue_title("https://Example.com/"), "citable watch: example.com")
+        self.assertEqual(host_of("docs.example.com/guide/"), "docs.example.com/guide")
+        self.assertIsNone(parse_state("no state here"))

@@ -93,10 +93,22 @@ citable 0.1.0: https://anthropic.com/
 claude plugin install citable@genzagents</pre>
 
   <h2 id="watch">Weekly watch</h2>
+  <p>A deploy that flips a WAF setting silently removes you from every AI answer. The watch is the alarm: a GitHub Action that checks your sites every Monday, keeps one issue per site up to date, and <strong>comments on it the moment an answer bot is blocked, <code class="inline">llms.txt</code> disappears, the site goes down or the score drops</strong>, which GitHub emails to you. Free, no server, no account. <a href="https://github.com/genzagents/citable/issues/1">Issue #1</a> watches this page.</p>
+  <pre>on:
+  schedule: [{ cron: "17 6 * * 1" }]
+  workflow_dispatch:
+permissions: { issues: write, contents: read }
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: genzagents/citable@v0.2.0
+        with:
+          sites: example.com</pre>
   <div class="cta">
-    <p><strong>£9/month: we run it weekly on up to 5 domains and email you the moment an answer bot gets blocked, <code class="inline">llms.txt</code> disappears, or your score drops.</strong> A deploy that flips a WAF setting silently removes you from every AI answer; this is the alarm.</p>
+    <p><strong>Hosted, £9/month: we run the watch for you, no repo needed, on up to 5 domains, with the weekly email.</strong></p>
     <p>Not live yet. Press the button to say you want it; the number of presses decides whether it gets built.</p>
-    <a class="btn" href="https://github.com/genzagents/citable/issues/new?title=I+want+the+weekly+watch&amp;body=Domain(s):%0A%0AWhat+would+you+pay+per+month%3F">I want the weekly watch</a>
+    <a class="btn" href="https://github.com/genzagents/citable/issues/new?title=I+want+the+weekly+watch&amp;body=Domain(s):%0A%0AWhat+would+you+pay+per+month%3F">I want the hosted weekly watch</a>
   </div>
 
   <footer>MIT licence. Built by <a href="https://github.com/genzagents">genzagents</a>. The CLI runs on your machine and talks only to the site you name.</footer>
