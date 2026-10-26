@@ -100,7 +100,7 @@ jobs:
   watch:
     runs-on: ubuntu-latest
     steps:
-      - uses: genzagents/citable@v0.3.0
+      - uses: genzagents/citable@v0.4.0
         with:
           sites: |
             example.com
@@ -149,6 +149,22 @@ whose key is present runs; `--engines=` picks a subset. Add `--issue --repo=you/
 a `prompts:` input) and it keeps a "citable track: example.com" issue up to date and comments when a citation is
 lost, which is the weekly email the paid tools charge $29 to $39 a month for. Bring your own keys; a 10-prompt run on
 three engines costs a few cents.
+
+## Hosted (£9/month)
+
+No repo, no keys, no cron: pay once a month, type your sites (up to 5), the prompts that matter (up to 10) and your
+brand at checkout, and the first report lands in your inbox within the hour. After that you get an email the moment
+something regresses and a digest once a week with the prompt tracking. Cancel from the receipt.
+
+The runner is in this repo (`citable hosted`), so you can also run the same thing yourself for your own customers:
+it polls [Polar](https://polar.sh) for active subscriptions, keeps one small state file per subscriber, and sends
+through [Resend](https://resend.com). Zero dependencies, one hourly cron. See [docs/HOSTED.md](docs/HOSTED.md).
+
+```bash
+citable hosted run --dry-run                  # against Polar, prints the emails instead of sending
+citable hosted run --subscribers=subs.json    # against a local list (no Polar), e.g. for your own clients
+citable hosted launchd                        # a launchd plist that runs it hourly on a Mac
+```
 
 ## Notes
 

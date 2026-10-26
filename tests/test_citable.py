@@ -242,3 +242,98 @@ class TrackTests(unittest.TestCase):
         self.assertIn("rival.io (2)", md)
         snap = snapshot("example.com", t["results"])
         self.assertEqual(parse_state(render_body(t, snap, "")), json.loads(json.dumps(snap)))
+
+
+class HostedTests(unittest.TestCase):
+    """The paid tier: Polar subscriptions in, emails out, state in between. No network: check_site is faked."""
+
+    def setUp(self):
+        import tempfile
+        self.tmp = tempfile.mkdtemp()
+        os.environ["CITABLE_STATE_DIR"] = self.tmp
+
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self.tmp, ignore_errors=True)
+        os.environ.pop("CITABLE_STATE_DIR", None)
+
+    @staticmethod
+    def _sub(**custom):
+        data = {"site": "Example.com\nhttps://docs.example.com/", "prompts": "best widgets\nwidget pricing", "brand": "Example"}
+        data.update(custom)
+        return {"id": "sub_1", "status": "active", "current_period_end": "2026-11-26T00:00:00Z",
+                "customer": {"email": "pat@example.com", "name": "Pat"}, "custom_field_data": data}
+
+    @staticmethod
+    def _report(score, reachable=True, blocked=()):
+        bots = {"ChatGPT-User": {"vendor": "OpenAI", "role": "answer", "robots": "allow", "live_status": 403 if "ChatGPT-User" in blocked else 200,
+                                 "live_blocked": "ChatGPT-User" in blocked},
+                "GPTBot": {"vendor": "OpenAI", "role": "training", "robots": "allow"}}
+        checks = [{"id": "llms_txt", "title": "llms.txt", "status": "pass", "points": 10, "max": 10, "detail": "present", "fix": ""}]
+        return {"url": "https://example.com/", "final_url": "https://example.com/", "score": score, "grade": "A" if score >= 90 else "C",
+                "reachable": reachable, "bots": bots, "llms_txt": {"present": True}, "checks": checks, "checked_at": "2026-10-26T17:00:00Z"}
+
+    def test_normalise_polar_subscription(self):
+        from citable.hosted import normalise
+        s = normalise(self._sub())
+        self.assertEqual(s["sites"], ["example.com", "docs.example.com"])
+        self.assertEqual(s["prompts"], ["best widgets", "widget pricing"])
+        self.assertEqual((s["email"], s["name"], s["brand"]), ("pat@example.com", "Pat", "Example"))
+        self.assertEqual(normalise(self._sub(), max_sites=1)["sites"], ["example.com"])
+        self.assertIsNone(normalise({**self._sub(), "status": "canceled"}))
+        self.assertIsNone(normalise(self._sub(site="")))
+        self.assertEqual(normalise(self._sub(site=None, Domains="a.io, b.io"))["sites"], ["a.io", "b.io"])
+
+    def test_decide(self):
+        from citable.hosted import WEEK, decide
+        now = 1_000_000.0
+        self.assertEqual(decide(None, [], [], now), "first")
+        self.assertEqual(decide({"last_report_at": now - 60}, ["x"], [], now), "alert")
+        self.assertEqual(decide({"last_report_at": now - 60}, [], ["y"], now), "alert")
+        self.assertEqual(decide({"last_report_at": now - 60}, [], [], now), "")
+        self.assertEqual(decide({"last_report_at": now - WEEK}, [], [], now), "digest")
+        self.assertEqual(decide({"last_report_at": now - 60}, [], [], now, tracked=True), "digest")
+
+    def test_run_first_then_quiet_then_alert_then_digest(self):
+        import io
+        from citable import hosted
+        from citable.hosted import WEEK, load_state, normalise, run
+        calls = []
+        def fake_check(site, live=True):
+            calls.append(site)
+            return self._report(95) if "docs" not in site else self._report(80)
+        hosted.check_site = fake_check
+        hosted.T.available_engines = lambda: []  # no engines: tracking is skipped quietly
+        sub = normalise(self._sub())
+        now = 2_000_000.0
+        out = io.StringIO()
+        run([sub], dry_run=True, now=now, out=out)
+        self.assertIn("would send [first] to pat@example.com: Your first citable report: example.com, docs.example.com", out.getvalue())
+        self.assertIn("Hi Pat,", out.getvalue())
+        self.assertEqual(sorted(calls), ["docs.example.com", "example.com"])
+        st = load_state("sub_1")
+        self.assertEqual(st["last_kind"], "first")
+        self.assertEqual(st["checks"]["example.com"]["score"], 95)
+        # an hour later, nothing changed: silence
+        out = io.StringIO()
+        run([sub], dry_run=True, now=now + 3600, out=out)
+        self.assertIn("no change", out.getvalue())
+        self.assertNotIn("would send", out.getvalue())
+        # a bot gets edge-blocked on one site: alert names the site
+        hosted.check_site = lambda site, live=True: self._report(95, blocked=("ChatGPT-User",))
+        out = io.StringIO()
+        run([sub], dry_run=True, now=now + 7200, out=out)
+        self.assertIn("would send [alert] to pat@example.com: citable alert: example.com: ", out.getvalue())
+        self.assertIn("WHAT GOT WORSE", out.getvalue())
+        # a week with no change: digest with the scores in the subject
+        out = io.StringIO()
+        run([sub], dry_run=True, now=now + 7200 + WEEK, out=out)
+        self.assertIn("would send [digest] to pat@example.com: citable weekly: example.com, docs.example.com (95 / 95)", out.getvalue())
+
+    def test_render_email_escapes_html(self):
+        from citable.hosted import render_email
+        sub = {"email": "a@b.c", "name": "", "sites": ["x.io"], "prompts": [], "brand": ""}
+        text, html = render_email("digest", sub, [self._report(50)], ["x.io: <b>bad</b>"], [], [])
+        self.assertIn("Hi there,", text)
+        self.assertIn("&lt;b&gt;bad&lt;/b&gt;", html)
+        self.assertNotIn("<b>bad</b>", html)

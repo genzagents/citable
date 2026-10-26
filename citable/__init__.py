@@ -9,6 +9,7 @@ One file, zero dependencies, Python 3.9+.
     citable mcp                       run as an MCP server over stdio (tools: check_site, draft_llms_txt)
     citable watch a.com b.com         weekly watch: remembers results in a GitHub issue, comments on regressions
     citable track a.com "best X"      prompt tracking: does each AI engine cite you for the prompts that matter
+    citable hosted run                the paid tier: Polar subscribers in, first report / alert / weekly digest emails out
 
 It does not guess from robots.txt alone: it fetches the homepage *as* each AI bot and reports
 edge blocks (Cloudflare, WAFs) that robots.txt never mentions.
@@ -27,7 +28,7 @@ import urllib.parse
 import urllib.request
 from typing import Any, Dict, List, Optional, Tuple
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 __all__ = ["check_site", "draft_llms_txt", "parse_robots", "robots_verdict", "main"]
 
 TIMEOUT = 12
@@ -668,7 +669,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     if argv[0] == "mcp":
         mcp_serve()
         return 0
-    if argv[0] in ("watch", "track"):
+    if argv[0] in ("watch", "track", "hosted"):
         import importlib
         import os
         sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # bare-script runs
