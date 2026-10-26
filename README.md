@@ -26,7 +26,7 @@ curl -sL https://raw.githubusercontent.com/genzagents/citable/main/citable/__ini
 ## What a run looks like
 
 ```
-citable 0.1.0: https://reddit.com/
+citable 0.2.0: https://reddit.com/
   score 13/100  grade F   (final URL https://www.reddit.com/)
 
   [FAIL]  0/15 robots.txt allows answer engines: robots.txt blocks: OAI-SearchBot, ChatGPT-User, Claude-SearchBot, ...
