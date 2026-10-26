@@ -19,7 +19,7 @@ inputs:
     description: Also fetch the homepage as each AI bot to catch CDN/WAF edge blocks.
     default: "true"
   issue:
-    description: Track each site in a GitHub issue titled "citable watch <host>" (needs `issues: write`).
+    description: 'Track each site in a GitHub issue titled "citable watch <host>" (needs issues write permission).'
     default: "true"
   notify:
     description: GitHub login to @mention in the comment when something regresses.
@@ -33,6 +33,21 @@ inputs:
   token:
     description: Token used by `gh` to read and write issues.
     default: ${{ github.token }}
+  prompts:
+    description: >-
+      Optional. Questions people ask AI engines, one per line. When set, the action also runs `citable track`:
+      it asks each engine every prompt and records whether the answer links to your first site. Engines come
+      from the API keys present in env (ANTHROPIC_API_KEY, OPENAI_API_KEY, PERPLEXITY_API_KEY).
+    default: ""
+  engines:
+    description: Comma-separated subset of anthropic,openai,perplexity to use for prompts (default is every engine with a key).
+    default: ""
+  brand:
+    description: Brand name to count as a mention when the answer names you without linking.
+    default: ""
+  min-visibility:
+    description: Fail the job if the share of prompts citing you drops below this percentage.
+    default: "0"
 
 outputs:
   score:
@@ -44,6 +59,12 @@ outputs:
   changed:
     description: "true if anything changed (better or worse) since the previous run."
     value: ${{ steps.watch.outputs.changed }}
+  visibility:
+    description: Share (0 to 100) of prompt-and-engine pairs whose answer cited the site (only when prompts are given).
+    value: ${{ steps.track.outputs.visibility }}
+  citations-lost:
+    description: "true if an engine stopped citing you for a prompt since the previous run."
+    value: ${{ steps.track.outputs.citations_lost }}
 
 runs:
   using: composite
@@ -67,3 +88,27 @@ runs:
         [ -z "$CITABLE_NOTIFY" ] || args+=("--notify=$CITABLE_NOTIFY")
         python3 "$GITHUB_ACTION_PATH/citable/watch.py" "$CITABLE_SITES" \
           "--min-score=$CITABLE_MIN_SCORE" "--label=$CITABLE_LABEL" "${args[@]}"
+    - id: track
+      if: ${{ inputs.prompts != '' }}
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        CITABLE_SITES: ${{ inputs.sites }}
+        CITABLE_PROMPTS: ${{ inputs.prompts }}
+        CITABLE_ENGINES: ${{ inputs.engines }}
+        CITABLE_BRAND: ${{ inputs.brand }}
+        CITABLE_MIN_VIS: ${{ inputs.min-visibility }}
+        CITABLE_ISSUE: ${{ inputs.issue }}
+        CITABLE_NOTIFY: ${{ inputs.notify }}
+        CITABLE_LABEL: ${{ inputs.label }}
+        CITABLE_FAIL: ${{ inputs.fail-on-regression }}
+      run: |
+        site=$(printf '%s' "$CITABLE_SITES" | tr ',' '\n' | awk 'NF{print; exit}')
+        printf '%s\n' "$CITABLE_PROMPTS" > "$RUNNER_TEMP/citable-prompts.txt"
+        args=("--prompts-file=$RUNNER_TEMP/citable-prompts.txt" "--min-visibility=$CITABLE_MIN_VIS" "--label=$CITABLE_LABEL")
+        [ -z "$CITABLE_ENGINES" ] || args+=("--engines=$CITABLE_ENGINES")
+        [ -z "$CITABLE_BRAND" ] || args+=("--brand=$CITABLE_BRAND")
+        [ "$CITABLE_ISSUE" != "true" ] || args+=(--issue)
+        [ -z "$CITABLE_NOTIFY" ] || args+=("--notify=$CITABLE_NOTIFY")
+        [ "$CITABLE_FAIL" = "true" ] || args+=(--no-fail-on-regression)
+        python3 "$GITHUB_ACTION_PATH/citable/track.py" "$site" "${args[@]}"

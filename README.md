@@ -15,6 +15,7 @@ citable example.com                # report
 citable example.com --json         # for scripts and CI (exit 1 if below --min-score=N)
 citable example.com --llms-txt     # a starter llms.txt built from your homepage
 citable watch a.com b.com          # weekly watch: GitHub issue per site, comment (email) on regressions
+citable track a.com "best X" "how Y"  # prompt tracking: which engines cite you, who gets cited instead
 ```
 
 No install at all:
@@ -26,7 +27,7 @@ curl -sL https://raw.githubusercontent.com/genzagents/citable/main/citable/__ini
 ## What a run looks like
 
 ```
-citable 0.2.0: https://reddit.com/
+citable 0.3.0: https://reddit.com/
   score 13/100  grade F   (final URL https://www.reddit.com/)
 
   [FAIL]  0/15 robots.txt allows answer engines: robots.txt blocks: OAI-SearchBot, ChatGPT-User, Claude-SearchBot, ...
@@ -99,7 +100,7 @@ jobs:
   watch:
     runs-on: ubuntu-latest
     steps:
-      - uses: genzagents/citable@v0.2.0
+      - uses: genzagents/citable@v0.3.0
         with:
           sites: |
             example.com
@@ -119,6 +120,35 @@ citable watch example.com docs.example.com --repo=you/your-repo --notify=you
 Not live yet; press the button to tell us you want it, that is what decides whether it gets built:
 
 [**I want the hosted weekly watch →**](https://github.com/genzagents/citable/issues/new?title=I+want+the+weekly+watch&body=Domain(s):%0A%0AWhat+would+you+pay+per+month%3F)
+
+## Track
+
+The watch tells you whether engines *can* read you. Track tells you whether they *do*: for the questions you want to
+be the answer to, does ChatGPT, Claude or Perplexity link to your site, and who gets linked instead?
+
+```bash
+citable track example.com "best tools for X" "how do I Y" --brand=Example
+```
+
+```
+## citable track: example.com
+
+**Visibility 50%**: share of prompt-and-engine pairs where an answer linked to your site.
+
+| Prompt | anthropic | openai | perplexity |
+|---|---|---|---|
+| best tools for X | **cited** | mentioned | **cited** |
+| how do I Y | no | no | no |
+
+**Who gets cited instead** (answers citing them): rival.io (4), other.org (2)
+```
+
+Engines: `anthropic` (ANTHROPIC_API_KEY, the web_search tool), `openai` (OPENAI_API_KEY, Responses API web search),
+`perplexity` (PERPLEXITY_API_KEY, sonar) and `claude-code` (the `claude` CLI on your machine, no key). Every engine
+whose key is present runs; `--engines=` picks a subset. Add `--issue --repo=you/repo` (or run it from the Action with
+a `prompts:` input) and it keeps a "citable track: example.com" issue up to date and comments when a citation is
+lost, which is the weekly email the paid tools charge $29 to $39 a month for. Bring your own keys; a 10-prompt run on
+three engines costs a few cents.
 
 ## Notes
 

@@ -16,10 +16,21 @@ jobs:
   watch:
     runs-on: ubuntu-latest
     steps:
-      - uses: genzagents/citable@v0.2.0
+      - uses: genzagents/citable@v0.3.0
         with:
           sites: |
             example.com
             docs.example.com
           # min-score: 75            # also fail if any site drops below this
           # notify: your-github-login # who gets @mentioned on a regression (default: repo owner)
+          #
+          # Prompt tracking (optional): does each engine cite you for the questions that matter?
+          # Needs at least one key in env below; engines without a key are skipped.
+          # prompts: |
+          #   best tools for X
+          #   how do I Y
+          # brand: Example
+        # env:
+        #   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        #   ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        #   PERPLEXITY_API_KEY: ${{ secrets.PERPLEXITY_API_KEY }}

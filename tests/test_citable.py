@@ -186,3 +186,59 @@ class WatchTests(unittest.TestCase):
         self.assertEqual(issue_title("https://Example.com/"), "citable watch: example.com")
         self.assertEqual(host_of("docs.example.com/guide/"), "docs.example.com/guide")
         self.assertIsNone(parse_state("no state here"))
+
+
+class TrackTests(unittest.TestCase):
+    def test_judge_cited_vs_mentioned(self):
+        from citable.track import judge
+        j = judge("example.com", "Try Example (example.com) or https://rival.io/tools.", ["https://www.example.com/guide"], brand="Example")
+        self.assertTrue(j["cited"]); self.assertTrue(j["mentioned"])
+        self.assertEqual(j["our_urls"], ["https://www.example.com/guide"])
+        self.assertEqual(j["other_hosts"], [("rival.io", 1)])
+        j = judge("example.com", "Nothing about it here. See https://rival.io/ and https://other.org/x.", [])
+        self.assertFalse(j["cited"]); self.assertFalse(j["mentioned"])
+        j = judge("example.com", "Example is good.", [], brand="Example")
+        self.assertFalse(j["cited"]); self.assertTrue(j["mentioned"])
+        self.assertTrue(judge("example.com", "", ["https://docs.example.com/a"])["cited"])
+        self.assertFalse(judge("example.com", "", ["https://notexample.com/a"])["cited"])
+
+    def test_parsers(self):
+        from citable.track import parse_anthropic, parse_openai, parse_perplexity
+        a = {"content": [{"type": "server_tool_use", "name": "web_search"},
+                         {"type": "web_search_tool_result", "content": [{"type": "web_search_result", "url": "https://seen.com/"}]},
+                         {"type": "text", "text": "Use A.", "citations": [{"type": "web_search_result_location", "url": "https://a.com/x"}]},
+                         {"type": "text", "text": " Or B."}]}
+        self.assertEqual(parse_anthropic(a), ("Use A.\n Or B.", ["https://a.com/x"]))
+        o = {"output": [{"type": "web_search_call"}, {"type": "message", "content": [
+            {"type": "output_text", "text": "Try A", "annotations": [{"type": "url_citation", "url": "https://a.com/"}, {"type": "file_citation"}]}]}]}
+        self.assertEqual(parse_openai(o), ("Try A", ["https://a.com/"]))
+        p = {"choices": [{"message": {"content": "A then B"}}], "citations": ["https://a.com/", "https://b.com/"],
+             "search_results": [{"url": "https://b.com/"}, {"url": "https://c.com/"}]}
+        self.assertEqual(parse_perplexity(p), ("A then B", ["https://a.com/", "https://b.com/", "https://c.com/"]))
+        self.assertEqual(parse_perplexity({}), ("", []))
+
+    def test_snapshot_and_diff(self):
+        from citable.track import diff, snapshot
+        res1 = [{"engine": "openai", "prompt": "best x", "cited": True}, {"engine": "openai", "prompt": "how y", "cited": False},
+                {"engine": "perplexity", "prompt": "best x", "cited": True, "error": "HTTP 401"}]
+        s1 = snapshot("www.Example.com", res1)
+        self.assertEqual(s1["domain"], "example.com")
+        self.assertEqual(s1["visibility"], 50)
+        self.assertEqual(s1["pairs"]["perplexity|best x"], "error")
+        res2 = [{"engine": "openai", "prompt": "best x", "cited": False}, {"engine": "openai", "prompt": "how y", "cited": True},
+                {"engine": "perplexity", "prompt": "best x", "cited": True}]
+        worse, better = diff(s1, snapshot("example.com", res2))
+        self.assertEqual(worse, ['openai no longer cites you for "best x".'])
+        self.assertEqual(better, ['openai now cites you for "how y".', "Visibility rose from 50% to 67%."])
+        self.assertEqual(diff(None, s1), ([], []))
+
+    def test_markdown_and_state_round_trip(self):
+        from citable.track import render_body, render_markdown, snapshot
+        from citable.watch import parse_state
+        t = {"domain": "example.com", "prompts": ["best x"], "engines": ["openai"], "visibility": 100, "competitors": [("rival.io", 2)],
+             "results": [{"engine": "openai", "prompt": "best x", "cited": True, "mentioned": True, "our_urls": [], "other_hosts": [], "excerpt": ""}]}
+        md = render_markdown(t)
+        self.assertIn("| best x | **cited** |", md)
+        self.assertIn("rival.io (2)", md)
+        snap = snapshot("example.com", t["results"])
+        self.assertEqual(parse_state(render_body(t, snap, "")), json.loads(json.dumps(snap)))
