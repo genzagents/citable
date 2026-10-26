@@ -122,6 +122,8 @@ Not live yet; press the button to tell us you want it, that is what decides whet
 
 ## Notes
 
+- MCP registry name: `mcp-name: io.github.genzagents/citable` (PyPI package `citable-cli`; the import and the command stay `citable`).
+
 - Bot user agents and roles follow the vendors' published strings (OpenAI, Anthropic, Perplexity). Role "answer" = fetches
   to answer or cite in a live conversation; "train" = builds training corpora.
 - The edge check compares HTTP status only. A site that returns 200 with a challenge page to bots will pass; file an issue with the domain and it gets a heuristic.

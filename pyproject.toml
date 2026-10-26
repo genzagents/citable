@@ -3,7 +3,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "citable"
+name = "citable-cli"
 version = "0.2.0"
 description = "Can ChatGPT, Claude and Perplexity read and cite your site? Checks robots.txt, edge blocks, llms.txt, schema and JS-only content. Zero dependencies. Also an MCP server."
 readme = "README.md"
