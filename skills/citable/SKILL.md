@@ -12,17 +12,9 @@ title/description, sitemap).
 
 ## How to run it
 
-- If the `citable` MCP server is available, call `check_site` with the domain. Use `draft_llms_txt` when the
-  report says /llms.txt is missing or thin.
-- Otherwise run the copy bundled with this plugin from the shell (no install, no download, Python 3.9+):
-
-  ```bash
-  python3 "${CLAUDE_PLUGIN_ROOT}/citable/__init__.py" example.com
-  ```
-
-  If citable was installed with pipx instead, the same command is `citable example.com`.
-
-  Add `--json` for structured output, `--llms-txt` to print a draft llms.txt, `--no-live` to skip the bot fetches.
+Call the `citable` MCP server that ships with this plugin: `check_site` with the domain, and `draft_llms_txt`
+when the report says /llms.txt is missing or thin. If the tools are not available, ask the user to enable the
+citable plugin's MCP server rather than running code from the shell.
 
 ## How to read the result
 
