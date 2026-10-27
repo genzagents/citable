@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>citable privacy policy</title>
+<link rel="canonical" href="https://genzagents.github.io/citable/privacy.html">
+<style>
+  :root {
+    --bg: #ffffff; --fg: #111318; --muted: #5b6270; --line: #e4e7ec; --card: #f6f7f9;
+    --accent: #1d4ed8; --ok: #15803d; --fail: #b91c1c; --warn: #a16207;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0e1013; --fg: #e8eaee; --muted: #9aa3b2; --line: #262a31; --card: #161a20;
+      --accent: #60a5fa; --ok: #4ade80; --fail: #f87171; --warn: #facc15;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0e1013; --fg: #e8eaee; --muted: #9aa3b2; --line: #262a31; --card: #161a20;
+    --accent: #60a5fa; --ok: #4ade80; --fail: #f87171; --warn: #facc15;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.55 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 48px 16px 96px; }
+  h1 { font-size: 2.1rem; letter-spacing: -0.02em; margin: 0 0 8px; }
+  h2 { font-size: 1.25rem; margin: 48px 0 12px; }
+  p.lead { font-size: 1.15rem; color: var(--muted); margin: 0 0 28px; }
+  pre, code { font-family: var(--mono); font-size: 0.88rem; }
+  pre { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; overflow-x: auto; margin: 10px 0; }
+  code.inline { background: var(--card); padding: 1px 5px; border-radius: 4px; }
+  .pass { color: var(--ok); } .fail { color: var(--fail); } .warn { color: var(--warn); }
+  table { border-collapse: collapse; width: 100%; font-size: 0.92rem; }
+  td, th { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; }
+  a { color: var(--accent); }
+  .cta { border: 1px solid var(--line); border-radius: 10px; padding: 18px; background: var(--card); margin-top: 16px; }
+  .btn { display: inline-block; font-weight: 600; padding: 10px 18px; border-radius: 8px; background: var(--accent); color: #fff; text-decoration: none; }
+  .muted { color: var(--muted); }
+  footer { margin-top: 64px; color: var(--muted); font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<main>
+<p><a href="./">citable</a></p>
+<h1>Privacy policy</h1>
+<p>Last updated 27 October 2026. citable is published by genzagents, London, United Kingdom. Contact: <a href="https://github.com/genzagents/citable/issues">github.com/genzagents/citable/issues</a>.</p>
+<h2>The plugin, CLI, MCP server and GitHub Action</h2>
+<p>These run on your own machine or in your own GitHub Actions runner. They send nothing to genzagents and contain no analytics or telemetry. To check a site they make ordinary HTTP requests to that site only: robots.txt, the homepage, llms.txt, the sitemap, and the homepage again with each AI crawler user agent. Nothing is stored except what you ask for, such as a report file or a GitHub issue in your own repository.</p>
+<p>The optional <code>citable track</code> command sends the prompts you choose to the AI provider whose API key or local Claude Code install you supply (Anthropic, OpenAI or Perplexity), under that provider&rsquo;s own terms. genzagents never sees those keys, prompts or answers.</p>
+<h2>The hosted paid tier</h2>
+<p>If you subscribe to citable hosted, we hold what you enter at checkout (your email address, the sites, the prompts and brand name you list) and the reports we generate for you. Payments are taken by <a href="https://polar.sh">Polar</a>, which acts as merchant of record; we never see your card details. Report emails are delivered by <a href="https://resend.com">Resend</a>. We use this data only to run the checks and email you the results. We keep it while your subscription is active and delete it within 30 days of cancellation, or sooner if you ask through the contact link above. We do not sell or share it with anyone else.</p>
+<h2>Your rights</h2>
+<p>You can ask for a copy of your data, a correction, or deletion at any time through the contact link above. If you are in the UK or EU you may also complain to your data protection authority (in the UK, the ICO).</p>
+</main>
+</body>
+</html>
