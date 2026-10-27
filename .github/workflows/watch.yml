@@ -1,0 +1,21 @@
+# Dogfood: our own page runs the same weekly watch we tell users to copy (docs/watch.yml), against
+# the code on main. Results live in issue #1.
+name: citable watch
+
+on:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./
+        with:
+          sites: genzagents.github.io/citable
