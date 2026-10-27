@@ -1,6 +1,6 @@
 {
   "name": "citable",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Check whether ChatGPT, Claude and Perplexity can read and cite a website: robots.txt, WAF/edge blocks (fetches as each bot), llms.txt, JSON-LD, JS-only content, sitemap. Score 0-100 with fixes, plus an llms.txt drafter. Zero dependencies.",
   "author": {
     "name": "genzagents",

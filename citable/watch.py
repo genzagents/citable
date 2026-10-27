@@ -163,20 +163,25 @@ def gh(*args: str, input_: Optional[str] = None) -> str:
     return p.stdout
 
 
-def find_issue(repo: str, title: str) -> Optional[Dict[str, Any]]:
-    raw = gh("issue", "list", "--repo", repo, "--state", "all", "--limit", "100",
-             "--search", f'"{title}" in:title', "--json", "number,title,body,state")
-    for it in json.loads(raw or "[]"):
-        if it["title"].strip().lower() == title.lower():
-            return it
-    return None
+def find_issue(repo: str, title: str, label: str = "citable") -> Optional[Dict[str, Any]]:
+    # Label listing first: it reads the issues directly, while search lags new issues by seconds to
+    # minutes, so two runs close together (push + dispatch) used to open duplicate issues. The search
+    # pass still finds an issue whose label someone removed. On duplicates the oldest wins.
+    found: List[Dict[str, Any]] = []
+    for extra in (["--label", label], ["--search", f'"{title}" in:title']):
+        raw = gh("issue", "list", "--repo", repo, "--state", "all", "--limit", "100", *extra,
+                 "--json", "number,title,body,state")
+        found = [it for it in json.loads(raw or "[]") if it["title"].strip().lower() == title.lower()]
+        if found:
+            break
+    return min(found, key=lambda it: int(it["number"])) if found else None
 
 
 def upsert_issue(repo: str, r: Dict[str, Any], snap: Dict[str, Any], notify: str, run_url: str,
                  label: str = "citable") -> Dict[str, Any]:
     title = issue_title(r["url"])
     body = render_body(r, snap, run_url)
-    existing = find_issue(repo, title)
+    existing = find_issue(repo, title, label)
     prev = parse_state(existing["body"]) if existing else None
     worse, better = diff(prev, snap)
     if existing is None:

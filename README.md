@@ -100,7 +100,7 @@ jobs:
   watch:
     runs-on: ubuntu-latest
     steps:
-      - uses: genzagents/citable@v0.4.0
+      - uses: genzagents/citable@v0.4.1
         with:
           sites: |
             example.com
