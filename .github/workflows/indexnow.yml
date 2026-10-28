@@ -1,0 +1,76 @@
+name: indexnow
+
+# Tell IndexNow engines (Bing, Yandex, Seznam, Naver...) about every page in the
+# sitemap after GitHub Pages finishes a deployment. Google ignores IndexNow.
+# Fail soft: an IndexNow error is logged as a warning and never fails the run.
+
+on:
+  workflow_run:
+    workflows: ["pages-build-deployment"]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: indexnow
+  cancel-in-progress: true
+
+jobs:
+  submit:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      INDEXNOW_HOST: genzagents.github.io
+      # Public by design: the same key is served at https://genzagents.github.io/<key>.txt
+      INDEXNOW_KEY: 7bf25f454fd71c2a00b4be9bcf94b12d
+      SITEMAP: docs/sitemap.xml
+    steps:
+      - uses: actions/checkout@v4
+      - name: Submit sitemap URLs to IndexNow
+        run: |
+          python3 - <<'PY'
+          import json, os, sys, urllib.error, urllib.request
+          import xml.etree.ElementTree as ET
+
+          host, key, sitemap = os.environ["INDEXNOW_HOST"], os.environ["INDEXNOW_KEY"], os.environ["SITEMAP"]
+          summary = os.environ.get("GITHUB_STEP_SUMMARY")
+
+          def report(line, warn=False):
+              print(("::warning::" if warn else "") + line)
+              if summary:
+                  with open(summary, "a") as f:
+                      f.write(line + "\n")
+
+          try:
+              ns = {"s": "http://www.sitemaps.org/schemas/sitemap/0.9"}
+              locs = ET.parse(sitemap).getroot().iterfind("s:url/s:loc", ns)
+              urls = [l.text.strip() for l in locs if l.text and l.text.strip().startswith(f"https://{host}/")]
+          except Exception as e:
+              report(f"IndexNow skipped: could not read {sitemap}: {e}", warn=True)
+              sys.exit(0)
+          if not urls:
+              report(f"IndexNow skipped: no {host} URLs in {sitemap}", warn=True)
+              sys.exit(0)
+
+          body = json.dumps({"host": host, "key": key, "keyLocation": f"https://{host}/{key}.txt",
+                             "urlList": urls}).encode()
+          req = urllib.request.Request("https://api.indexnow.org/indexnow", data=body, method="POST",
+                                       headers={"Content-Type": "application/json; charset=utf-8"})
+          try:
+              with urllib.request.urlopen(req, timeout=30) as r:
+                  code, text = r.status, r.read(500).decode("utf-8", "replace")
+          except urllib.error.HTTPError as e:
+              code, text = e.code, e.read(500).decode("utf-8", "replace")
+          except Exception as e:
+              report(f"IndexNow request failed (not retried): {e}", warn=True)
+              sys.exit(0)
+
+          ok = code in (200, 202)
+          report(f"IndexNow HTTP {code} for {len(urls)} URLs from {sitemap}" + (f": {text.strip()}" if text.strip() else ""),
+                 warn=not ok)
+          for u in urls:
+              print("  " + u)
+          PY
