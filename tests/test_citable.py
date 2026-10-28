@@ -370,3 +370,19 @@ class HostedTests(unittest.TestCase):
         self.assertIn("Hi there,", text)
         self.assertIn("&lt;b&gt;bad&lt;/b&gt;", html)
         self.assertNotIn("<b>bad</b>", html)
+
+
+class RegistryMetadata(unittest.TestCase):
+    """server.json (MCP registry) must name the PyPI release being published and the README must carry mcp-name."""
+
+    def test_server_json_matches_release(self):
+        import citable
+        root = os.path.join(os.path.dirname(__file__), "..")
+        with open(os.path.join(root, "server.json")) as f:
+            srv = json.load(f)
+        self.assertEqual(srv["name"], "io.github.genzagents/citable")
+        self.assertEqual(srv["version"], citable.__version__)
+        pkg = srv["packages"][0]
+        self.assertEqual((pkg["registryType"], pkg["identifier"], pkg["version"]), ("pypi", "citable-cli", citable.__version__))
+        with open(os.path.join(root, "README.md")) as f:
+            self.assertIn("mcp-name: io.github.genzagents/citable`", f.read())

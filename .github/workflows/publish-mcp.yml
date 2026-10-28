@@ -1,0 +1,97 @@
+name: publish-mcp
+
+# Publish server.json to the official MCP registry (registry.modelcontextprotocol.io)
+# as io.github.genzagents/*, authenticated with GitHub OIDC (no secrets).
+# On a release this waits for the PyPI publish (publish.yml) of the same version,
+# because the registry checks the mcp-name line in that PyPI release's README.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-mcp
+  cancel-in-progress: false
+
+jobs:
+  registry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      id-token: write # GitHub OIDC login to the MCP registry
+      contents: read
+    env:
+      MCP_PUBLISHER_VERSION: v1.8.6
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check server.json matches pyproject.toml
+        id: meta
+        run: |
+          set -euo pipefail
+          name=$(jq -r .name server.json)
+          ver=$(jq -r .version server.json)
+          pkg=$(jq -r '.packages[0].identifier' server.json)
+          pkgver=$(jq -r '.packages[0].version' server.json)
+          pyver=$(python3 -c 'import tomllib;print(tomllib.load(open("pyproject.toml","rb"))["project"]["version"])')
+          echo "server.json $name $ver -> PyPI $pkg $pkgver; pyproject $pyver"
+          [ "$ver" = "$pyver" ] && [ "$pkgver" = "$pyver" ] || { echo "::error::server.json version ($ver/$pkgver) != pyproject.toml ($pyver)"; exit 1; }
+          if [ "${GITHUB_EVENT_NAME}" = "release" ] && [ "${GITHUB_REF_NAME#v}" != "$pyver" ]; then
+            echo "::error::release tag ${GITHUB_REF_NAME} does not match version $pyver"; exit 1
+          fi
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          echo "pkg=$pkg" >> "$GITHUB_OUTPUT"
+          echo "ver=$pyver" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for the PyPI release
+        env:
+          PKG: ${{ steps.meta.outputs.pkg }}
+          VER: ${{ steps.meta.outputs.ver }}
+          NAME: ${{ steps.meta.outputs.name }}
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 60); do
+            if curl -fsS "https://pypi.org/pypi/$PKG/$VER/json" -o pypi.json; then
+              if grep -q "mcp-name: $NAME" pypi.json; then echo "PyPI $PKG $VER is live with mcp-name"; exit 0; fi
+              echo "::error::PyPI $PKG $VER README has no 'mcp-name: $NAME' line"; exit 1
+            fi
+            echo "PyPI $PKG $VER not yet available ($i/60)"; sleep 15
+          done
+          echo "::error::PyPI $PKG $VER did not appear within 15 minutes"; exit 1
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+      - name: Download and verify mcp-publisher
+        run: |
+          set -euo pipefail
+          os="$(uname -s | tr '[:upper:]' '[:lower:]')"
+          arch="$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')"
+          archive="mcp-publisher_${os}_${arch}.tar.gz"
+          base_url="https://github.com/modelcontextprotocol/registry/releases/download/${MCP_PUBLISHER_VERSION}"
+          curl --fail --location --silent --show-error --output "$archive" "$base_url/$archive"
+          curl --fail --location --silent --show-error --output "$archive.sigstore.json" "$base_url/$archive.sigstore.json"
+          cosign verify-blob \
+            --bundle "$archive.sigstore.json" \
+            --certificate-identity "https://github.com/modelcontextprotocol/registry/.github/workflows/release.yml@refs/tags/${MCP_PUBLISHER_VERSION}" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+            "$archive"
+          tar xzf "$archive" mcp-publisher
+          rm -f "$archive" "$archive.sigstore.json"
+
+      - name: Authenticate to the MCP registry (GitHub OIDC)
+        run: ./mcp-publisher login github-oidc
+
+      - name: Publish server.json
+        run: ./mcp-publisher publish
+
+      - name: Show the registry entry
+        env:
+          NAME: ${{ steps.meta.outputs.name }}
+        run: |
+          curl -fsS "https://registry.modelcontextprotocol.io/v0/servers?search=$NAME" \
+            | jq '.servers[] | {name: .server.name, version: .server.version, official: ._meta["io.modelcontextprotocol.registry/official"]}'
