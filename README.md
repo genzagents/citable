@@ -1,5 +1,7 @@
 # citable
 
+[![GitHub Marketplace](https://img.shields.io/badge/Marketplace-citable%20watch-blue?logo=github)](https://github.com/marketplace/actions/citable-watch) [![PyPI](https://img.shields.io/pypi/v/citable-cli)](https://pypi.org/project/citable-cli/)
+
 Can ChatGPT, Claude and Perplexity actually read and cite your site?
 
 Most "AI visibility" checkers read `robots.txt` and stop. `citable` fetches your homepage **as each AI bot**
