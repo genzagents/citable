@@ -28,7 +28,7 @@ import urllib.parse
 import urllib.request
 from typing import Any, Dict, List, Optional, Tuple
 
-__version__ = "0.4.1"
+__version__ = "0.4.2"
 __all__ = ["check_site", "draft_llms_txt", "parse_robots", "robots_verdict", "main"]
 
 TIMEOUT = 12

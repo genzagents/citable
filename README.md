@@ -10,7 +10,7 @@ Score out of 100, every failure with the fix. Also runs as an **MCP server** so 
 Zero dependencies. One file. Python 3.9+.
 
 ```bash
-pipx install git+https://github.com/genzagents/citable     # or: uvx --from git+https://github.com/genzagents/citable citable
+pipx install citable-cli     # from PyPI; on a Mac: brew install pipx first. Or: uvx --from citable-cli citable
 citable example.com                # report
 citable example.com --json         # for scripts and CI (exit 1 if below --min-score=N)
 citable example.com --llms-txt     # a starter llms.txt built from your homepage
@@ -100,7 +100,7 @@ jobs:
   watch:
     runs-on: ubuntu-latest
     steps:
-      - uses: genzagents/citable@v0.4.1
+      - uses: genzagents/citable@v0.4.2
         with:
           sites: |
             example.com

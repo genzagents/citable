@@ -57,7 +57,7 @@
   <p>Most "AI visibility" checkers read <code class="inline">robots.txt</code> and stop. But the block that actually keeps you out of answers is usually at the edge: a Cloudflare "Block AI bots" toggle, a WAF rule, a rate limiter. <code class="inline">citable</code> fetches your homepage <strong>as each AI bot</strong> and compares it with what a browser gets. Then it checks the rest: <code class="inline">llms.txt</code>, JSON-LD, title and description, whether your text exists without JavaScript, sitemap, canonical. It also tells answer bots (the ones that cite you) apart from training crawlers (which you may block freely).</p>
 
   <h2>A real run</h2>
-  <pre>citable 0.4.1: https://reddit.com/
+  <pre>citable 0.4.2: https://reddit.com/
   score 13/100  grade F
 
   <span class="fail">[FAIL]</span>  0/15 robots.txt allows answer engines: robots.txt blocks: OAI-SearchBot, ChatGPT-User, Claude-SearchBot, ...
@@ -66,7 +66,7 @@
   <span class="fail">[FAIL]</span>  0/15 /llms.txt: /llms.txt returns HTTP 404.
          fix: Publish a plain-text /llms.txt ... `citable reddit.com --llms-txt` prints a draft from your homepage.
 
-citable 0.4.1: https://anthropic.com/
+citable 0.4.2: https://anthropic.com/
   score 77/100  grade B
 
   <span class="pass">[PASS]</span> 15/15 robots.txt allows answer engines
@@ -102,7 +102,7 @@ jobs:
   watch:
     runs-on: ubuntu-latest
     steps:
-      - uses: genzagents/citable@v0.4.1
+      - uses: genzagents/citable@v0.4.2
         with:
           sites: example.com</pre>
   <h2 id="track">Prompt tracking</h2>

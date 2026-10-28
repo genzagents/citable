@@ -1,8 +1,5 @@
 name: citable watch
-description: >-
-  Weekly check that ChatGPT, Claude and Perplexity can still read and cite your site. Keeps one GitHub
-  issue per site up to date and comments on it (GitHub emails you) the moment an AI answer bot is blocked,
-  llms.txt breaks, the site goes down or the score drops. Zero dependencies.
+description: Weekly check that ChatGPT, Claude and Perplexity can read and cite your site; alerts you in a GitHub issue.
 author: genzagents
 branding:
   icon: eye
