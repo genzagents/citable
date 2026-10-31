@@ -372,6 +372,49 @@ class HostedTests(unittest.TestCase):
         self.assertNotIn("<b>bad</b>", html)
 
 
+
+class GithubSponsorsHostedTests(unittest.TestCase):
+    BODY = ("### Site(s) to watch\n\nhttps://Example.com/\nfoo.org\n\n### Prompts you want to be the answer to\n\n"
+            "best tools for X\nhow do I Y\n\n### Brand name\n\n_No response_")
+
+    def test_parse_issue_form(self):
+        from citable.hosted import parse_issue_form
+        d = parse_issue_form(self.BODY)
+        self.assertEqual(d["site"], "https://Example.com/\nfoo.org")
+        self.assertEqual(d["prompts"], "best tools for X\nhow do I Y")
+        self.assertNotIn("brand", d)
+
+    def test_only_paid_sponsors_and_oldest_issue(self):
+        from citable.hosted import github_subscribers
+        sponsors = [{"login": "Alice", "monthly": 12}, {"login": "bob", "monthly": 5}, {"login": "cara", "one_time": True}]
+        issues = [{"number": 9, "author": "alice", "body": "### Site(s) to watch\n\nlater.com"},
+                  {"number": 3, "author": "alice", "body": self.BODY},
+                  {"number": 4, "author": "bob", "body": self.BODY},
+                  {"number": 5, "author": "mallory", "body": self.BODY},
+                  {"number": 6, "author": "cara", "body": "### Site(s) to watch\n\nnot a site"},
+                  {"number": 7, "author": "cara", "body": "### Site(s) to watch\n\ncara.io"}]
+        subs = github_subscribers(sponsors, issues)
+        self.assertEqual([(s["name"], s["issue"], s["sites"]) for s in subs],
+                         [("alice", 3, ["example.com", "foo.org"]), ("cara", 7, ["cara.io"])])
+        self.assertEqual(subs[0]["prompts"], ["best tools for X", "how do I Y"])
+
+    def test_report_goes_to_issue_comment(self):
+        import tempfile
+        from citable import hosted
+        os.environ["CITABLE_STATE_DIR"] = tempfile.mkdtemp()
+        posted = []
+        orig = (hosted.check_site, hosted.post_comment, hosted.T.available_engines)
+        try:
+            hosted.check_site = lambda site, live=True: HostedTests._report(90)
+            hosted.post_comment = lambda repo, n, subj, text: posted.append((repo, n, subj)) or "url"
+            hosted.T.available_engines = lambda: []
+            sub = {"id": "gh-alice", "email": "@alice on #3", "name": "alice", "issue": 3, "sites": ["example.com"],
+                   "prompts": [], "brand": "", "period_end": ""}
+            hosted.run([sub], dry_run=False, now=1000.0, out=__import__("io").StringIO(), repo="genzagents/citable")
+        finally:
+            hosted.check_site, hosted.post_comment, hosted.T.available_engines = orig
+        self.assertEqual(posted, [("genzagents/citable", 3, "Your first citable report: example.com")])
+
 class RegistryMetadata(unittest.TestCase):
     """server.json (MCP registry) must name the PyPI release being published and the README must carry mcp-name."""
 

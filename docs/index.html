@@ -42,6 +42,7 @@
   .cta { border: 1px solid var(--line); border-radius: 10px; padding: 18px; background: var(--card); margin-top: 16px; }
   .btn { display: inline-block; font-weight: 600; padding: 10px 18px; border-radius: 8px; background: var(--accent); color: #fff; text-decoration: none; }
   .muted { color: var(--muted); }
+  .steps { margin: 8px 0 16px; padding-left: 22px; line-height: 1.8; }
   footer { margin-top: 64px; color: var(--muted); font-size: 0.85rem; }
 </style>
 </head>
@@ -115,9 +116,14 @@ jobs:
 | how do I Y       | no        | no        | no         |
 Who gets cited instead: rival.io (4), other.org (2)</pre>
   <div class="cta">
-    <p><strong>Hosted, £9/month: we run the watch and 10 tracked prompts for you, no repo and no API keys needed, on up to 5 domains, with the weekly email.</strong></p>
-    <p>Built and tested; the checkout opens as soon as payments are wired. Your first report arrives within the hour of paying, then an email the moment something regresses and a weekly digest with the prompt tracking. Press the button to be told when the checkout is live.</p>
-    <a class="btn" href="https://github.com/genzagents/citable/issues/new?title=I+want+the+hosted+watch&amp;body=Domain(s):%0A%0APrompts+you+want+to+be+the+answer+to:%0A%0A">Tell me when the checkout is live</a>
+    <p><strong>Hosted, $12/month (about £9): we run the watch and 10 tracked prompts for you, no repo and no API keys needed, on up to 5 domains, with a weekly digest.</strong></p>
+    <p>Pay with GitHub Sponsors ($12 a month, about £9; cancel any time from GitHub), then open a <strong>Hosted watch</strong> issue with your site(s) and prompts. Your first report is posted on that issue within the hour, then a comment the moment something regresses and a weekly digest with the prompt tracking. GitHub emails you each one.</p>
+    <ol class="steps">
+      <li><a href="https://github.com/sponsors/genzagents/sponsorships?amount=12&amp;frequency=recurring">Sponsor genzagents at $12 a month</a></li>
+      <li><a href="https://github.com/genzagents/citable/issues/new?template=hosted.yml">Open your Hosted watch issue</a> from the same GitHub account</li>
+    </ol>
+    <a class="btn" href="https://github.com/sponsors/genzagents/sponsorships?amount=12&amp;frequency=recurring">Start the hosted watch: $12/month</a>
+    <p class="muted" style="font-size:13px">Needs a GitHub account. The issue is public, so the sites, prompts and reports on it can be seen by anyone; use the free Action in a private repo if that matters to you.</p>
   </div>
 
   <footer>MIT licence. Built by <a href="https://github.com/genzagents">genzagents</a>. The CLI runs on your machine and talks only to the site you name.</footer>

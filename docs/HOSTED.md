@@ -1,5 +1,16 @@
 # citable hosted: how the £9/month tier runs
 
+## Live now: GitHub Sponsors (no Polar, no Resend)
+
+1. The subscriber sponsors genzagents at $12 a month or more (https://github.com/sponsors/genzagents/sponsorships?amount=12&frequency=recurring).
+2. They open a "Hosted watch" issue (`.github/ISSUE_TEMPLATE/hosted.yml`, label `hosted`) with site(s), prompts and brand.
+3. The Mac mini runs `python3 -m citable.hosted run --source=github` hourly (launchd `io.genzagents.citable.hosted`).
+   It reads active sponsorships of the org and the open `hosted` issues, keeps the sponsor's oldest issue, and posts
+   the first report, alerts and weekly digests as comments on it. A sponsor who stops paying stops getting reports;
+   an issue from a non-sponsor is ignored. The token is `gh auth token` (needs `read:org` and `repo`).
+
+The Polar + Resend mode below gives private email delivery once those accounts exist.
+
 No server. One always-on machine runs `citable hosted run` once an hour. Everything else is Polar (payments,
 checkout form, receipts, VAT) and Resend (email delivery).
 

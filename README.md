@@ -118,10 +118,11 @@ Inputs: `sites` (required), `min-score` (fail below it), `live` (fetch as each b
 citable watch example.com docs.example.com --repo=you/your-repo --notify=you
 ```
 
-**Hosted, £9/month**: the same watch run by us, no repo needed, up to 5 domains, with the weekly email.
-Not live yet; press the button to tell us you want it, that is what decides whether it gets built:
+**Hosted, $12/month (about £9)**: the same watch run by us, no repo needed, up to 5 domains, with a weekly digest.
+Live now through GitHub Sponsors:
 
-[**I want the hosted weekly watch →**](https://github.com/genzagents/citable/issues/new?title=I+want+the+weekly+watch&body=Domain(s):%0A%0AWhat+would+you+pay+per+month%3F)
+1. [**Sponsor genzagents at $12 a month →**](https://github.com/sponsors/genzagents/sponsorships?amount=12&frequency=recurring)
+2. [**Open your Hosted watch issue →**](https://github.com/genzagents/citable/issues/new?template=hosted.yml) from the same account. Reports are posted on it (the issue is public).
 
 ## Track
 
@@ -152,11 +153,15 @@ a `prompts:` input) and it keeps a "citable track: example.com" issue up to date
 lost, which is the weekly email the paid tools charge $29 to $39 a month for. Bring your own keys; a 10-prompt run on
 three engines costs a few cents.
 
-## Hosted (£9/month)
+## Hosted ($12/month, about £9)
 
-No repo, no keys, no cron: pay once a month, type your sites (up to 5), the prompts that matter (up to 10) and your
-brand at checkout, and the first report lands in your inbox within the hour. After that you get an email the moment
-something regresses and a digest once a week with the prompt tracking. Cancel from the receipt.
+No repo, no keys, no cron: sponsor genzagents at $12 a month, open a Hosted watch issue with your sites (up to 5),
+the prompts that matter (up to 10) and your brand, and the first report is posted on the issue within the hour. After
+that you get a comment the moment something regresses and a digest once a week with the prompt tracking (GitHub emails
+you each one). Cancel from your GitHub sponsorships page.
+
+`citable hosted run --source=github` matches active sponsors to the open `hosted` issues they authored and comments
+the reports there, so it needs only a GitHub token. The Polar + Resend mode below is for private email delivery.
 
 The runner is in this repo (`citable hosted`), so you can also run the same thing yourself for your own customers:
 it polls [Polar](https://polar.sh) for active subscriptions, keeps one small state file per subscriber, and sends

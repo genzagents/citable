@@ -27,6 +27,14 @@ Environment:
 
 Polar custom field slugs read from each subscription's custom_field_data: `site` (or sites/domain/url;
 one per line or comma), `prompts` (one per line), `brand` (optional). Zero dependencies.
+
+GitHub Sponsors instead of Polar and Resend (`run --source=github`): a subscriber sponsors the org at
+$12 a month or more and opens a "Hosted watch" issue (issue form) in the repo with their site(s), prompts
+and brand. The runner matches active sponsors to open issues labelled `hosted` that they authored, and
+posts each report as a comment on that issue (GitHub emails the author). No Polar, no Resend.
+  GITHUB_TOKEN         token that can read the org's sponsors and comment on issues (default: `gh auth token`).
+  CITABLE_GH_ORG       sponsored org (default genzagents); CITABLE_GH_REPO issues repo (default genzagents/citable).
+  CITABLE_GH_MIN       minimum monthly dollars for a recurring sponsorship (default 12).
 """
 from __future__ import annotations
 
@@ -98,6 +106,53 @@ def normalise(sub: Dict[str, Any], max_sites: int = 5, max_prompts: int = 10) ->
         "brand": str(brand).strip() if isinstance(brand, str) else "",
         "period_end": sub.get("current_period_end") or "",
     }
+
+
+_NO_RESPONSE = {"", "_no response_", "none", "n/a"}
+FORM_KEYS = {"site": SITE_KEYS, "prompts": PROMPT_KEYS, "brand": BRAND_KEYS}
+
+
+def parse_issue_form(body: str) -> Dict[str, str]:
+    """GitHub issue-form body ('### Label' then the answer) -> {site, prompts, brand} by the label's first word."""
+    out: Dict[str, str] = {}
+    for block in re.split(r"(?m)^###\s+", body or "")[1:]:
+        label, _, answer = block.partition("\n")
+        answer = answer.strip()
+        if answer.lower() in _NO_RESPONSE:
+            continue
+        words = re.findall(r"[a-z]+", label.lower())
+        for key, aliases in FORM_KEYS.items():
+            if words and words[0] in aliases and key not in out:
+                out[key] = answer
+    return out
+
+
+def github_subscribers(sponsors: List[Dict[str, Any]], issues: List[Dict[str, Any]], min_monthly: int = 12,
+                       max_sites: int = 5, max_prompts: int = 10) -> List[Dict[str, Any]]:
+    """Active sponsors x their open `hosted` issues -> subscriber dicts that report on the issue.
+
+    sponsors: [{login, monthly, one_time}] (one-time sponsors count while GitHub lists them as active, 30 days).
+    issues:   [{number, author, body}]; a sponsor's oldest open issue wins, later ones are ignored.
+    """
+    paid = {s["login"].lower() for s in sponsors
+            if s.get("login") and (s.get("one_time") or int(s.get("monthly") or 0) >= min_monthly)}
+    out: List[Dict[str, Any]] = []
+    seen = set()
+    for issue in sorted(issues, key=lambda i: int(i["number"])):
+        who = str(issue.get("author") or "").lower()
+        if who not in paid or who in seen:
+            continue
+        data = parse_issue_form(issue.get("body") or "")
+        sites = [W.host_of(x) for x in _split(data.get("site"))][:max_sites]
+        sites = list(dict.fromkeys(x for x in sites if "." in x))
+        if not sites:
+            continue
+        seen.add(who)
+        out.append({"id": f"gh-{who}", "email": f"@{issue['author']} on #{issue['number']}", "name": issue["author"],
+                    "issue": int(issue["number"]), "sites": sites,
+                    "prompts": _split(data.get("prompts"))[:max_prompts], "brand": (data.get("brand") or "").strip(),
+                    "period_end": ""})
+    return out
 
 
 def decide(state: Optional[Dict[str, Any]], worse: List[str], better: List[str], now: float, tracked: bool = False) -> str:
@@ -190,6 +245,44 @@ def send_email(to: str, subj: str, text: str, html: str) -> str:
     return str(res.get("id", ""))
 
 
+def gh_token() -> str:
+    tok = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
+    if tok:
+        return tok
+    import subprocess
+    try:
+        return subprocess.run(["gh", "auth", "token"], capture_output=True, text=True, check=True).stdout.strip()
+    except (OSError, subprocess.CalledProcessError):
+        raise RuntimeError("GITHUB_TOKEN is not set and `gh auth token` failed") from None
+
+
+def _gh(method: str, path: str, body: Optional[Dict[str, Any]] = None) -> Any:
+    return _http(method, "https://api.github.com" + path, {"Authorization": f"Bearer {gh_token()}",
+                                                         "X-GitHub-Api-Version": "2022-11-28"}, body)
+
+
+def fetch_github(org: str, repo: str) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    q = ("query($org:String!){organization(login:$org){sponsorshipsAsMaintainer(first:100,activeOnly:true){nodes{"
+         "tier{monthlyPriceInDollars isOneTime} "
+         "sponsorEntity{... on User{login} ... on Organization{login}}}}}}")
+    res = _gh("POST", "/graphql", {"query": q, "variables": {"org": org}})
+    if res.get("errors"):
+        raise RuntimeError(f"GitHub sponsors query: {res['errors'][0].get('message')}")
+    nodes = (((res.get("data") or {}).get("organization") or {}).get("sponsorshipsAsMaintainer") or {}).get("nodes") or []
+    sponsors = [{"login": (n.get("sponsorEntity") or {}).get("login", ""),
+                 "monthly": (n.get("tier") or {}).get("monthlyPriceInDollars") or 0,
+                 "one_time": bool((n.get("tier") or {}).get("isOneTime"))} for n in nodes]
+    raw = _gh("GET", f"/repos/{repo}/issues?state=open&labels=hosted&per_page=100") or []
+    issues = [{"number": i["number"], "author": (i.get("user") or {}).get("login", ""), "body": i.get("body") or ""}
+              for i in raw if "pull_request" not in i]
+    return sponsors, issues
+
+
+def post_comment(repo: str, number: int, subj: str, text: str) -> str:
+    res = _gh("POST", f"/repos/{repo}/issues/{number}/comments", {"body": f"**{subj}**\n\n```\n{text}\n```"})
+    return str(res.get("html_url", ""))
+
+
 def state_dir() -> str:
     d = os.environ.get("CITABLE_STATE_DIR") or os.path.join(os.path.expanduser("~"), ".citable-hosted")
     os.makedirs(d, exist_ok=True)
@@ -248,7 +341,7 @@ def process(sub: Dict[str, Any], now: float, live: bool = True, do_track: bool =
 
 
 def run(subscribers: List[Dict[str, Any]], dry_run: bool, live: bool = True, do_track: bool = True,
-        now: Optional[float] = None, out=sys.stdout) -> int:
+        now: Optional[float] = None, out=sys.stdout, repo: str = "") -> int:
     now = now if now is not None else dt.datetime.now(dt.timezone.utc).timestamp()
     sent = 0
     for sub in subscribers:
@@ -263,6 +356,9 @@ def run(subscribers: List[Dict[str, Any]], dry_run: bool, live: bool = True, do_
             text, html = render_email(kind, sub, res["results"], res["worse"], res["better"], res["tracks"])
             if dry_run:
                 print(f"=== would send [{kind}] to {sub['email']}: {subj}\n{text}\n", file=out)
+            elif sub.get("issue"):
+                msg_id = post_comment(repo, sub["issue"], subj, text)
+                print(f"hosted: posted [{kind}] on #{sub['issue']} ({msg_id}): {subj}", file=out)
             else:
                 msg_id = send_email(sub["email"], subj, text, html)
                 print(f"hosted: sent [{kind}] to {sub['email']} ({msg_id}): {subj}", file=out)
@@ -320,6 +416,14 @@ def main(argv: Optional[List[str]] = None) -> int:
         print(f"unknown command {cmd!r}; see --help", file=sys.stderr)
         return 2
     max_sites, max_prompts = limits()
+    dry, live, do_track = "--dry-run" in flags, "--no-live" not in flags, "--no-track" not in flags
+    if _flag(flags, "--source") == "github":
+        org = os.environ.get("CITABLE_GH_ORG", "genzagents")
+        repo = os.environ.get("CITABLE_GH_REPO", "genzagents/citable")
+        sponsors, issues = fetch_github(org, repo)
+        subs = github_subscribers(sponsors, issues, int(os.environ.get("CITABLE_GH_MIN", "12")), max_sites, max_prompts)
+        print(f"hosted: {len(sponsors)} active sponsor(s), {len(issues)} open hosted issue(s)", file=sys.stderr)
+        return run(subs, dry_run=dry, live=live, do_track=do_track, repo=repo)
     src = _flag(flags, "--subscribers")
     if src:
         with open(src, encoding="utf-8") as f:

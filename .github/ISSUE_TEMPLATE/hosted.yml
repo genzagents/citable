@@ -1,0 +1,31 @@
+name: Hosted watch (sponsors)
+description: Start the hosted citable watch after sponsoring genzagents at $12 a month. Your reports arrive as comments on this issue.
+title: "Hosted watch: "
+labels: [hosted]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Step 1:** sponsor [genzagents at $12 a month](https://github.com/sponsors/genzagents/sponsorships?amount=12&frequency=recurring) from this GitHub account.
+        **Step 2:** fill this in and submit. Your first report is posted here within the hour, then a comment the moment something regresses and a weekly digest. GitHub emails you each one.
+
+        This issue is public, so the sites, prompts and reports on it are visible to anyone. Cancel any time from your GitHub sponsorships page.
+  - type: textarea
+    id: site
+    attributes:
+      label: Site(s) to watch
+      description: One per line, up to 5.
+      placeholder: example.com
+    validations:
+      required: true
+  - type: textarea
+    id: prompts
+    attributes:
+      label: Prompts you want to be the answer to
+      description: One per line, up to 10. Each week we ask AI answer engines (Claude today; ChatGPT and Perplexity are being added) whether they cite you.
+      placeholder: best tools for X
+  - type: input
+    id: brand
+    attributes:
+      label: Brand name
+      description: So a mention without a link still counts.
